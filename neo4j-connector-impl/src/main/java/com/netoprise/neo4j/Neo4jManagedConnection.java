@@ -21,357 +21,327 @@
  */
 package com.netoprise.neo4j;
 
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
+import com.netoprise.neo4j.connection.Neo4JConnectionImpl;
+import com.netoprise.neo4j.connection.Neo4jConnection;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Transaction;
 
 import javax.resource.ResourceException;
-import javax.resource.spi.ConnectionEvent;
-import javax.resource.spi.ConnectionEventListener;
-import javax.resource.spi.ConnectionRequestInfo;
-import javax.resource.spi.LocalTransaction;
-import javax.resource.spi.ManagedConnection;
-import javax.resource.spi.ManagedConnectionMetaData;
+import javax.resource.spi.*;
 import javax.security.auth.Subject;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
-
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Transaction;
-
-import com.netoprise.neo4j.connection.Neo4JConnectionImpl;
-import com.netoprise.neo4j.connection.Neo4jConnection;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Neo4jManagedConnection
- * 
+ *
  * @version $Revision: $
  */
 public class Neo4jManagedConnection implements ManagedConnection {
 
-	private final class Neo4jXAResource implements XAResource {
+    private Transaction transaction;
+    /**
+     * The logwriter
+     */
+    private PrintWriter logwriter;
+    /**
+     * ManagedConnectionFactory
+     */
+    private Neo4jManagedConnectionFactory managedConnectionFactory;
+    /**
+     * Listeners
+     */
+    private List<ConnectionEventListener> listeners;
+    /**
+     * Connection
+     */
+    private Neo4jConnection connection;
+    private LocalTransaction localTransaction;
+    private Neo4jXAResource xaResource;
 
-		private int timeout;
+    /**
+     * Default constructor
+     *
+     * @param mcf mcf
+     */
+    public Neo4jManagedConnection(Neo4jManagedConnectionFactory mcf) {
+        this.managedConnectionFactory = mcf;
+        this.logwriter = new PrintWriter(System.out);
+        this.listeners = new ArrayList<ConnectionEventListener>(1);
+        this.connection = null;
+        this.localTransaction = new Neo4jLocalTransaction();
+        this.xaResource = new Neo4jXAResource();
+    }
 
-		@Override
-		public void commit(Xid xid, boolean onePhase) throws XAException {
-		}
+    /**
+     * Creates a new connection handle for the underlying physical connection
+     * represented by the ManagedConnection instance.
+     *
+     * @param subject       Security context as JAAS subject
+     * @param cxRequestInfo ConnectionRequestInfo instance
+     * @return generic Object instance representing the connection handle.
+     * @throws ResourceException generic exception if operation fails
+     */
+    public Neo4jConnection getConnection(Subject subject, ConnectionRequestInfo cxRequestInfo) throws ResourceException {
+        logwriter.append("getConnection()");
+        connection = new Neo4JConnectionImpl(this, managedConnectionFactory);
+        return connection;
+    }
 
-		@Override
-		public void end(Xid xid, int arg1) throws XAException {
-		}
+    /**
+     * Used by the container to change the association of an application-level
+     * connection handle with a ManagedConneciton instance.
+     *
+     * @param connection Application-level connection handle
+     * @throws ResourceException generic exception if operation fails
+     */
+    public void associateConnection(Object connection) throws ResourceException {
+        logwriter.append("associateConnection()");
+    }
 
-		@Override
-		public void forget(Xid xid) throws XAException {
-		}
+    /**
+     * Application server calls this method to force any cleanup on the
+     * ManagedConnection instance.
+     *
+     * @throws ResourceException generic exception if operation fails
+     */
+    public void cleanup() throws ResourceException
 
-		@Override
-		public int getTransactionTimeout() throws XAException {
-			return this.timeout;
-		}
+    {
+        logwriter.append("cleanup()");
+        this.connection = null;
+    }
 
-		@Override
-		public boolean isSameRM(XAResource arg0) throws XAException {
-			return this == arg0;
-		}
+    /**
+     * Destroys the physical connection to the underlying resource manager.
+     *
+     * @throws ResourceException generic exception if operation fails
+     */
+    public void destroy() throws ResourceException {
+        logwriter.append("destroy()");
+        this.connection = null;
+        this.localTransaction = null;
+        managedConnectionFactory.destroyManagedConnection(this);
+    }
 
-		@Override
-		public int prepare(Xid xid) throws XAException {
-			return XA_OK;
-		}
+    /**
+     * Adds a connection event listener to the ManagedConnection instance.
+     *
+     * @param listener A new ConnectionEventListener to be registered
+     */
+    public void addConnectionEventListener(ConnectionEventListener listener) {
+        logwriter.append("addConnectionEventListener()");
+        if (listener == null)
+            throw new IllegalArgumentException("Listener is null");
+        listeners.add(listener);
+    }
 
-		@Override
-		public Xid[] recover(int arg0) throws XAException {
-			// two-phase commits not supported
-			return new Xid[0];
-		}
+    /**
+     * Removes an already registered connection event listener from the
+     * ManagedConnection instance.
+     *
+     * @param listener already registered connection event listener to be removed
+     */
+    public void removeConnectionEventListener(ConnectionEventListener listener) {
+        logwriter.append("removeConnectionEventListener()");
+        if (listener == null)
+            throw new IllegalArgumentException("Listener is null");
+        listeners.remove(listener);
+    }
 
-		@Override
-		public void rollback(Xid xid) throws XAException {
-		}
+    /**
+     * Close handle
+     *
+     * @param neo4jConnectionImpl The handle
+     */
+    public void closeHandle(GraphDatabaseService neo4jConnectionImpl) {
+        ConnectionEvent event = new ConnectionEvent(this, ConnectionEvent.CONNECTION_CLOSED);
+        event.setConnectionHandle(neo4jConnectionImpl);
+        fireCloseEvent(event);
 
-		@Override
-		public boolean setTransactionTimeout(int arg0) throws XAException {
-			this.timeout = arg0;
-			return true;
-		}
+    }
 
-		@Override
-		public void start(Xid xid, int flags) throws XAException {
-		}
+    private void fireCloseEvent(ConnectionEvent event) {
+        for (ConnectionEventListener cel : listeners) {
+            cel.connectionClosed(event);
+        }
+    }
 
-	}
+    private void fireRollbackEvent() {
+        ConnectionEvent event = new ConnectionEvent(this, ConnectionEvent.LOCAL_TRANSACTION_ROLLEDBACK);
+        for (ConnectionEventListener cel : listeners) {
+            cel.localTransactionRolledback(event);
+        }
+    }
 
-	/**
-	 * TODO: delegate transactions to the platform JTA, see
-	 * http://static.springsource
-	 * .org/spring/docs/2.5.x/api/org/springframework/transaction
-	 * /jta/JtaTransactionManager.html
-	 * 
-	 * @author asmirnov
-	 * 
-	 */
-	private final class Neo4jLocalTransaction implements LocalTransaction {
+    private void fireCommitEvent() {
+        ConnectionEvent event = new ConnectionEvent(this, ConnectionEvent.LOCAL_TRANSACTION_COMMITTED);
+        for (ConnectionEventListener cel : listeners) {
+            cel.localTransactionCommitted(event);
+        }
+    }
 
-		public boolean isActive() {
-			return null != transaction;
-		}
+    private void fireBeginEvent() {
+        ConnectionEvent event = new ConnectionEvent(this, ConnectionEvent.LOCAL_TRANSACTION_STARTED);
+        for (ConnectionEventListener cel : listeners) {
+            cel.localTransactionStarted(event);
+        }
+    }
 
-		@Override
-		public void rollback() throws ResourceException {
-			if (null != transaction) {
-				transaction.failure();
-				finish();
-				fireRollbackEvent();
-			}
-		}
+    /**
+     * Gets the log writer for this ManagedConnection instance.
+     *
+     * @return Character ourput stream associated with this Managed-Connection
+     * instance
+     * @throws ResourceException generic exception if operation fails
+     */
+    public PrintWriter getLogWriter() throws ResourceException {
+        return logwriter;
+    }
 
-		public void finish() {
-			transaction.finish();
-			transaction = null;
-		}
+    /**
+     * Sets the log writer for this ManagedConnection instance.
+     *
+     * @param out Character Output stream to be associated
+     * @throws ResourceException generic exception if operation fails
+     */
+    public void setLogWriter(PrintWriter out) throws ResourceException {
+        logwriter = out;
+    }
 
-		@Override
-		public void commit() throws ResourceException {
-			if (null != transaction) {
-				transaction.success();
-				finish();
-				fireCommitEvent();
-			}
-		}
+    /**
+     * Returns an <code>javax.resource.spi.LocalTransaction</code> instance.
+     *
+     * @return LocalTransaction instance
+     * @throws ResourceException generic exception if operation fails
+     */
+    public LocalTransaction getLocalTransaction() throws ResourceException {
+        logwriter.append("getLocalTransaction()");
+        return localTransaction;
+    }
 
-		@Override
-		public void begin() throws ResourceException {
-			transaction = managedConnectionFactory.getDatabase().beginTx();
-			fireBeginEvent();
-		}
-	}
+    /**
+     * Returns an <code>javax.transaction.xa.XAresource</code> instance.
+     *
+     * @return XAResource instance
+     * @throws ResourceException generic exception if operation fails
+     */
+    public XAResource getXAResource() throws ResourceException {
+        logwriter.append("getXAResource()");
+        return this.xaResource;
+    }
 
+    /**
+     * Gets the metadata information for this connection's underlying EIS
+     * resource manager instance.
+     *
+     * @return ManagedConnectionMetaData instance
+     * @throws ResourceException generic exception if operation fails
+     */
+    public ManagedConnectionMetaData getMetaData() throws ResourceException {
+        logwriter.append("getMetaData()");
+        return new Neo4jManagedConnectionMetaData();
+    }
 
+    private final class Neo4jXAResource implements XAResource {
 
-	private Transaction transaction;
+        private int timeout;
 
-	/** The logwriter */
-	private PrintWriter logwriter;
+        @Override
+        public void commit(Xid xid, boolean onePhase) throws XAException {
+        }
 
-	/** ManagedConnectionFactory */
-	private Neo4jManagedConnectionFactory managedConnectionFactory;
+        @Override
+        public void end(Xid xid, int arg1) throws XAException {
+        }
 
-	/** Listeners */
-	private List<ConnectionEventListener> listeners;
+        @Override
+        public void forget(Xid xid) throws XAException {
+        }
 
-	/** Connection */
-	private Neo4jConnection connection;
+        @Override
+        public int getTransactionTimeout() throws XAException {
+            return this.timeout;
+        }
 
-	private LocalTransaction localTransaction;
+        @Override
+        public boolean isSameRM(XAResource arg0) throws XAException {
+            return this == arg0;
+        }
 
-	private Neo4jXAResource xaResource;
+        @Override
+        public int prepare(Xid xid) throws XAException {
+            return XA_OK;
+        }
 
-	/**
-	 * Default constructor
-	 * 
-	 * @param mcf
-	 *            mcf
-	 */
-	public Neo4jManagedConnection(Neo4jManagedConnectionFactory mcf) {
-		this.managedConnectionFactory = mcf;
-		this.logwriter = new PrintWriter(System.out);
-		this.listeners = new ArrayList<ConnectionEventListener>(1);
-		this.connection = null;
-		this.localTransaction = new Neo4jLocalTransaction();
-		this.xaResource = new Neo4jXAResource();
-	}
+        @Override
+        public Xid[] recover(int arg0) throws XAException {
+            // two-phase commits not supported
+            return new Xid[0];
+        }
 
-	/**
-	 * Creates a new connection handle for the underlying physical connection
-	 * represented by the ManagedConnection instance.
-	 * 
-	 * @param subject
-	 *            Security context as JAAS subject
-	 * @param cxRequestInfo
-	 *            ConnectionRequestInfo instance
-	 * @return generic Object instance representing the connection handle.
-	 * @throws ResourceException
-	 *             generic exception if operation fails
-	 */
-	public Neo4jConnection getConnection(Subject subject,
-			ConnectionRequestInfo cxRequestInfo) throws ResourceException {
-		logwriter.append("getConnection()");
-		connection = new Neo4JConnectionImpl(this, managedConnectionFactory);
-		return connection;
-	}
+        @Override
+        public void rollback(Xid xid) throws XAException {
+        }
 
-	/**
-	 * Used by the container to change the association of an application-level
-	 * connection handle with a ManagedConneciton instance.
-	 * 
-	 * @param connection
-	 *            Application-level connection handle
-	 * @throws ResourceException
-	 *             generic exception if operation fails
-	 */
-	public void associateConnection(Object connection) throws ResourceException {
-		logwriter.append("associateConnection()");
-	}
+        @Override
+        public boolean setTransactionTimeout(int arg0) throws XAException {
+            this.timeout = arg0;
+            return true;
+        }
 
-	/**
-	 * Application server calls this method to force any cleanup on the
-	 * ManagedConnection instance.
-	 * 
-	 * @throws ResourceException
-	 *             generic exception if operation fails
-	 */
-	public void cleanup() throws ResourceException
+        @Override
+        public void start(Xid xid, int flags) throws XAException {
+        }
 
-	{
-		logwriter.append("cleanup()");
-		this.connection = null;
-	}
+    }
 
-	/**
-	 * Destroys the physical connection to the underlying resource manager.
-	 * 
-	 * @throws ResourceException
-	 *             generic exception if operation fails
-	 */
-	public void destroy() throws ResourceException {
-		logwriter.append("destroy()");
-		this.connection = null;
-		this.localTransaction = null;
-		managedConnectionFactory.destroyManagedConnection(this);
-	}
+    /**
+     * TODO: delegate transactions to the platform JTA, see
+     * http://static.springsource
+     * .org/spring/docs/2.5.x/api/org/springframework/transaction
+     * /jta/JtaTransactionManager.html
+     *
+     * @author asmirnov
+     */
+    private final class Neo4jLocalTransaction implements LocalTransaction {
 
-	/**
-	 * Adds a connection event listener to the ManagedConnection instance.
-	 * 
-	 * @param listener
-	 *            A new ConnectionEventListener to be registered
-	 */
-	public void addConnectionEventListener(ConnectionEventListener listener) {
-		logwriter.append("addConnectionEventListener()");
-		if (listener == null)
-			throw new IllegalArgumentException("Listener is null");
-		listeners.add(listener);
-	}
+        public boolean isActive() {
+            return null != transaction;
+        }
 
-	/**
-	 * Removes an already registered connection event listener from the
-	 * ManagedConnection instance.
-	 * 
-	 * @param listener
-	 *            already registered connection event listener to be removed
-	 */
-	public void removeConnectionEventListener(ConnectionEventListener listener) {
-		logwriter.append("removeConnectionEventListener()");
-		if (listener == null)
-			throw new IllegalArgumentException("Listener is null");
-		listeners.remove(listener);
-	}
+        @Override
+        public void rollback() throws ResourceException {
+            if (null != transaction) {
+                transaction.failure();
+                finish();
+                fireRollbackEvent();
+            }
+        }
 
-	/**
-	 * Close handle
-	 * 
-	 * @param neo4jConnectionImpl
-	 *            The handle
-	 */
-	public void closeHandle(GraphDatabaseService neo4jConnectionImpl) {
-		ConnectionEvent event = new ConnectionEvent(this,
-				ConnectionEvent.CONNECTION_CLOSED);
-		event.setConnectionHandle(neo4jConnectionImpl);
-		fireCloseEvent(event);
+        public void finish() {
+            transaction.finish();
+            transaction = null;
+        }
 
-	}
+        @Override
+        public void commit() throws ResourceException {
+            if (null != transaction) {
+                transaction.success();
+                finish();
+                fireCommitEvent();
+            }
+        }
 
-	private void fireCloseEvent(ConnectionEvent event) {
-		for (ConnectionEventListener cel : listeners) {
-			cel.connectionClosed(event);
-		}
-	}
-
-	private void fireRollbackEvent() {
-		ConnectionEvent event = new ConnectionEvent(this,
-				ConnectionEvent.LOCAL_TRANSACTION_ROLLEDBACK);
-		for (ConnectionEventListener cel : listeners) {
-			cel.localTransactionRolledback(event);
-		}
-	}
-
-	private void fireCommitEvent() {
-		ConnectionEvent event = new ConnectionEvent(this,
-				ConnectionEvent.LOCAL_TRANSACTION_COMMITTED);
-		for (ConnectionEventListener cel : listeners) {
-			cel.localTransactionCommitted(event);
-		}
-	}
-
-	private void fireBeginEvent() {
-		ConnectionEvent event = new ConnectionEvent(this,
-				ConnectionEvent.LOCAL_TRANSACTION_STARTED);
-		for (ConnectionEventListener cel : listeners) {
-			cel.localTransactionStarted(event);
-		}
-	}
-
-	/**
-	 * Gets the log writer for this ManagedConnection instance.
-	 * 
-	 * @return Character ourput stream associated with this Managed-Connection
-	 *         instance
-	 * @throws ResourceException
-	 *             generic exception if operation fails
-	 */
-	public PrintWriter getLogWriter() throws ResourceException {
-		return logwriter;
-	}
-
-	/**
-	 * Sets the log writer for this ManagedConnection instance.
-	 * 
-	 * @param out
-	 *            Character Output stream to be associated
-	 * @throws ResourceException
-	 *             generic exception if operation fails
-	 */
-	public void setLogWriter(PrintWriter out) throws ResourceException {
-		logwriter = out;
-	}
-
-	/**
-	 * Returns an <code>javax.resource.spi.LocalTransaction</code> instance.
-	 * 
-	 * @return LocalTransaction instance
-	 * @throws ResourceException
-	 *             generic exception if operation fails
-	 */
-	public LocalTransaction getLocalTransaction() throws ResourceException {
-		logwriter.append("getLocalTransaction()");
-		return localTransaction;
-	}
-
-	/**
-	 * Returns an <code>javax.transaction.xa.XAresource</code> instance.
-	 * 
-	 * @return XAResource instance
-	 * @throws ResourceException
-	 *             generic exception if operation fails
-	 */
-	public XAResource getXAResource() throws ResourceException {
-		logwriter.append("getXAResource()");
-		return this.xaResource;
-	}
-
-	/**
-	 * Gets the metadata information for this connection's underlying EIS
-	 * resource manager instance.
-	 * 
-	 * @return ManagedConnectionMetaData instance
-	 * @throws ResourceException
-	 *             generic exception if operation fails
-	 */
-	public ManagedConnectionMetaData getMetaData() throws ResourceException {
-		logwriter.append("getMetaData()");
-		return new Neo4jManagedConnectionMetaData();
-	}
+        @Override
+        public void begin() throws ResourceException {
+            transaction = managedConnectionFactory.getDatabase().beginTx();
+            fireBeginEvent();
+        }
+    }
 
 }

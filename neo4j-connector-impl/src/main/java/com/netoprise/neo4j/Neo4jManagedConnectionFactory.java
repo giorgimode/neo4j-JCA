@@ -60,7 +60,6 @@ public class Neo4jManagedConnectionFactory implements ManagedConnectionFactory,
 	/** The serial version UID */
 	private static final long serialVersionUID = 1L;
 
-
 	/** The resource adapter */
 	private Neo4jResourceAdapter ra;
 
