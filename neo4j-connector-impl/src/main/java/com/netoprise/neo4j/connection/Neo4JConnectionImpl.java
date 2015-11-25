@@ -21,165 +21,123 @@
  */
 package com.netoprise.neo4j.connection;
 
-import java.util.logging.Logger;
+import com.poolingpeople.neo4j.api.boundary.Endpoint;
+import com.poolingpeople.neo4j.api.boundary.MultiStatementBuilder;
+import com.poolingpeople.neo4j.api.boundary.Neo4jClient;
+import com.poolingpeople.neo4j.api.boundary.Statement;
+import com.poolingpeople.neo4j.api.control.ResponseStreamingParser;
+import com.poolingpeople.neo4j.api.control.StatementBuilder;
+import com.poolingpeople.neo4j.api.control.parsing.states.StatesManager;
 
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.event.KernelEventHandler;
-import org.neo4j.graphdb.event.TransactionEventHandler;
-import org.neo4j.graphdb.index.IndexManager;
-
-import com.netoprise.neo4j.Neo4jManagedConnection;
-import com.netoprise.neo4j.Neo4jManagedConnectionFactory;
+import javax.inject.Inject;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Neo4JConnectionImpl
- * 
+ *
  * @version $Revision: $
  */
 public class Neo4JConnectionImpl implements Neo4jConnection {
-	/** The logger */
-	private static Logger log = Logger.getLogger("Neo4JConnectionImpl");
 
-	/** ManagedConnection */
-	private final Neo4jManagedConnection mc;
-
-	/** ManagedConnectionFactory */
-	private final Neo4jManagedConnectionFactory mcf;
-
-	private GraphDatabaseService graphDatabase;
-
-	/**
-	 * Default constructor
-	 * 
-	 * @param mc
-	 *            Neo4JManagedConnection
-	 * @param mcf
-	 *            Neo4JManagedConnectionFactory
-	 */
-	public Neo4JConnectionImpl(Neo4jManagedConnection mc,
-			Neo4jManagedConnectionFactory mcf) {
-		this.mc = mc;
-		this.mcf = mcf;
-		this.graphDatabase = mcf.getDatabase();
-	}
+    Neo4jClient neo4jClient;
 
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.neo4j.graphdb.GraphDatabaseService#createNode()
-	 */
-	@Override
-	public Node createNode() {
-		return this.graphDatabase.createNode();
-	}
+/*    public Neo4JConnectionImpl(Neo4jClient neo4jClient) {
+//        cut = new Neo4jClient();
+//        cut.endpoint = new Endpoint();
+//        cut.endpoint.setUsername("neo4j");
+//        cut.endpoint.setPassword("admin");
+        cut.helper = new StatementBuilder();
+        StatesManager statesManager = new StatesManager();
+        cut.responseParser = new ResponseStreamingParser(statesManager);
+        cut.endpoint.statesManager = statesManager;
+        this.neo4jClient = neo4jClient;
+    }*/
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.neo4j.graphdb.GraphDatabaseService#getAllNodes()
-	 */
-	@Override
-	public Iterable<Node> getAllNodes() {
-		return graphDatabase.getAllNodes();
-	}
+    public Neo4JConnectionImpl() {
+        neo4jClient = new Neo4jClient();
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.neo4j.graphdb.GraphDatabaseService#getNodeById(long)
-	 */
-	@Override
-	public Node getNodeById(long arg0) {
-		return graphDatabase.getNodeById(arg0);
-	}
+    @Override
+    public List<Map<String, Object>> cypherOneColumnQuery(Statement statement) {
+        return neo4jClient.cypherOneColumnQuery(statement);
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.neo4j.graphdb.GraphDatabaseService#getReferenceNode()
-	 */
-	@Override
-	public Node getReferenceNode() {
-		return graphDatabase.getReferenceNode();
-	}
+    @Override
+    public List<Map<String, Map<String, Object>>> cypherMultipleEntityColumnsQuery(Statement statement) {
+        return neo4jClient.cypherMultipleEntityColumnsQuery(statement);
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.neo4j.graphdb.GraphDatabaseService#getRelationshipById(long)
-	 */
-	@Override
-	public Relationship getRelationshipById(long arg0) {
-		return graphDatabase.getRelationshipById(arg0);
-	}
+    @Override
+    public List<Map<String, Object>> cypherParamsQuery(Statement statement) {
+        return neo4jClient.cypherParamsQuery(statement);
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.neo4j.graphdb.GraphDatabaseService#getRelationshipTypes()
-	 */
-	@Override
-	public Iterable<RelationshipType> getRelationshipTypes() {
-		return graphDatabase.getRelationshipTypes();
-	}
+    @Override
+    public Map<String, Object> cypherSingleEntityQuery(Statement statement) {
+        return neo4jClient.cypherSingleEntityQuery(statement);
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.neo4j.graphdb.GraphDatabaseService#index()
-	 */
-	@Override
-	public IndexManager index() {
-		return graphDatabase.index();
-	}
+    @Override
+    public Object cypherSinglePropertyQuery(Statement statement) {
+        return neo4jClient.cypherSinglePropertyQuery(statement);
+    }
 
+    @Override
+    public List<List<Map<String, Object>>> cypherOneColumnQuery(MultiStatementBuilder statements) {
+        return neo4jClient.cypherOneColumnQuery(statements);
+    }
 
-	/**
-	 * @return
-	 * @see org.neo4j.graphdb.GraphDatabaseService#beginTx()
-	 */
-	public Transaction beginTx() {
-		return graphDatabase.beginTx();
-	}
+    @Override
+    public List<List<Map<String, Map<String, Object>>>> cypherMultipleEntityColumnsQuery(MultiStatementBuilder statements) {
+        return neo4jClient.cypherMultipleEntityColumnsQuery(statements);
+    }
 
+    @Override
+    public List<List<Map<String, Object>>> cypherParamsQuery(MultiStatementBuilder statements) {
+        return neo4jClient.cypherParamsQuery(statements);
+    }
 
-	public void shutdown() {
-		mc.closeHandle(this);
-	}
+    @Override
+    public List<Map<String, Object>> cypherSingleEntityQuery(MultiStatementBuilder statements) {
+        return neo4jClient.cypherSingleEntityQuery(statements);
+    }
 
+    @Override
+    public List<Object> cypherSinglePropertyQuery(MultiStatementBuilder statements) {
+        return neo4jClient.cypherSinglePropertyQuery(statements);
+    }
 
-	public <T> TransactionEventHandler<T> registerTransactionEventHandler(
-			TransactionEventHandler<T> handler) {
-		return graphDatabase.registerTransactionEventHandler(handler);
-	}
+    @Override
+    public void beginTransaction() {
+        neo4jClient.beginTransaction();
+    }
 
+    @Override
+    public void commitTransaction() {
+        neo4jClient.commitTransaction();
+    }
 
-	public <T> TransactionEventHandler<T> unregisterTransactionEventHandler(
-			TransactionEventHandler<T> handler) {
-		return graphDatabase.unregisterTransactionEventHandler(handler);
-	}
+    @Override
+    public Neo4jClient setEndpoint(Endpoint endpoint) {
+        return neo4jClient.setEndpoint(endpoint);
+    }
 
+    @Override
+    public void manipulativeQuery(Statement statement) {
+        neo4jClient.manipulativeQuery(statement);
+    }
 
-	public KernelEventHandler registerKernelEventHandler(
-			KernelEventHandler handler) {
-		return graphDatabase.registerKernelEventHandler(handler);
-	}
+    @Override
+    public void manipulativeQuery(MultiStatementBuilder statements) {
+        neo4jClient.manipulativeQuery(statements);
+    }
 
+    @Override
+    public Endpoint getEndpoint() {
+        return neo4jClient.getEndpoint();
+    }
 
-	public KernelEventHandler unregisterKernelEventHandler(
-			KernelEventHandler handler) {
-		return graphDatabase.unregisterKernelEventHandler(handler);
-	}
-
-
-	@Override
-	public void close() {
-		mc.closeHandle(this);
-	}
 
 }

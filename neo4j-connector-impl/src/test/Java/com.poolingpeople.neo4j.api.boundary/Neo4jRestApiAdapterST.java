@@ -1,59 +1,54 @@
 package com.poolingpeople.neo4j.api.boundary;
 
-import com.netoprise.neo4j.connection.Neo4JConnectionImpl2;
-import com.poolingpeople.neo4j.api.control.ResponseStreamingParser;
-import com.poolingpeople.neo4j.api.control.StatementBuilder;
-import com.poolingpeople.neo4j.api.control.parsing.states.StatesManager;
+import com.netoprise.neo4j.connection.Neo4JConnectionImpl;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-
 
 public class Neo4jRestApiAdapterST {
-    Neo4JConnectionImpl2 cut0;
-    Neo4jClient cut;
+    Neo4JConnectionImpl cut0;
 
     @Before
     public void setUp() throws Exception {
-        cut = new Neo4jClient();
+       /* cut = new Neo4jClient();
         cut.endpoint = new Endpoint();
         cut.endpoint.setUsername("neo4j");
         cut.endpoint.setPassword("admin");
-        cut.helper = new StatementBuilder();
+
         StatesManager statesManager = new StatesManager();
         cut.responseParser = new ResponseStreamingParser(statesManager);
-        cut.endpoint.statesManager = statesManager;
+        cut.endpoint.statesManager = statesManager;*/
 
-        cut0 = new Neo4JConnectionImpl2(cut);
+        cut0 = new Neo4JConnectionImpl();
+        cut0.getEndpoint().setPassword("admin");
+        cut0.getEndpoint().setUsername("neo4j");
         cut0.beginTransaction();
-        cut0.cypherSingleEntityQuery(new Statement("MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r", new QueryParams()));
+        cut0.cypherSingleEntityQuery(new Statement("MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r", new QueryParams
+                ()));
 
 
     }
 
-    private String createQuery(){
+    private String createQuery() {
 
         String query = "CREATE (n:a{props}) return count(n) as total";
         return query;
     }
 
     @Test
-    public void testCreateQuery_exception(){
+    public void testCreateQuery_exception() {
         String query = "CREATE (n:c{start:{start}}), (m:c{end:{end}}) return count(n) as total";
         QueryParams params = new QueryParams().add("start", 7).add("end", 8);
         try {
 
             List<Map<String, Object>> r = cut0.cypherParamsQuery(new Statement(query, params));
             System.out.println(r);
-        }catch (Neo4jClientErrorException e){
+        } catch (Neo4jClientErrorException e) {
             assertThat("Expected a parameter named props", is(e.getMessage()));
         }
 

@@ -30,8 +30,9 @@ public class Neo4jClient {
 
 	public String sayHello(String who) throws ResourceException{
 		Neo4jConnection connection = connectionFactory.getConnection();
-		Node referenceNode = connection.getReferenceNode();
-		connection.close();
+		//Node referenceNode = connection.getReferenceNode();
+		//connection.close();
+
 		return "Hello "+who;
 	}
 

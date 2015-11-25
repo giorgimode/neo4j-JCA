@@ -75,6 +75,9 @@ public class Neo4jManagedConnection implements ManagedConnection {
         this.connection = null;
         this.localTransaction = new Neo4jLocalTransaction();
         this.xaResource = new Neo4jXAResource();
+       // connection = new Neo4JConnectionImpl(this, managedConnectionFactory);
+        connection = new Neo4JConnectionImpl();
+
     }
 
     /**
@@ -88,7 +91,6 @@ public class Neo4jManagedConnection implements ManagedConnection {
      */
     public Neo4jConnection getConnection(Subject subject, ConnectionRequestInfo cxRequestInfo) throws ResourceException {
         logwriter.append("getConnection()");
-        connection = new Neo4JConnectionImpl(this, managedConnectionFactory);
         return connection;
     }
 
