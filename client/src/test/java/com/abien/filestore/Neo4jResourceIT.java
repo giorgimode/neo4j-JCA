@@ -1,41 +1,26 @@
 package com.abien.filestore;
 
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
+import org.jglue.cdiunit.CdiRunner;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import java.util.List;
-import java.util.Map;
+import javax.inject.Inject;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-
-/**
- *
- * @author adam bien, adam-bien.com
- */
+@RunWith(CdiRunner.class)
 public class Neo4jResourceIT {
-    private Client client;
-    private WebResource files;
+
+    @Inject
+    FilesResource2 filesResource2;
 
     @Before
-    public void init(){
-        this.client = Client.create();
-        this.files = this.client.resource("http://localhost:8080/demo-jca-file-client/v1/").path("files");
+    public void init() {
 
     }
 
     @Test
     public void crud() {
-        String key = "duke1";
-        final String origin = "hey joe";
-        this.files.path(key).put(origin);
-        String fetched = this.files.path(key).get(String.class);
-        assertThat(fetched,is(origin));
-//        this.files.path(key).delete();
-//        ClientResponse response = this.files.path(key).get(ClientResponse.class);
-//        assertThat(response.getStatus(), is(204));
+        System.out.println(filesResource2);
+        filesResource2.fetch();
     }
 }

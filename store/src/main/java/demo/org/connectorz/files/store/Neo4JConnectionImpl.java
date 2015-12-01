@@ -21,17 +21,19 @@ import com.poolingpeople.neo4j.api.boundary.Neo4jClient;
 import com.poolingpeople.neo4j.api.boundary.Statement;
 import demo.org.connectorz.files.Neo4jConnection;
 
+import javax.annotation.Resource;
+import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
 
 public class Neo4JConnectionImpl implements Neo4jConnection {
 
+   // @Resource
     Neo4jClient neo4jClient;
     private String rootDirectory;
 
-    public Neo4JConnectionImpl() {
+   public Neo4JConnectionImpl() {
         neo4jClient = new Neo4jClient();
-       // this.rootDirectory = rootDirectory;
 
     }
 

@@ -1,4 +1,3 @@
-/*
 package com.abien.filestore;
 
 import com.poolingpeople.neo4j.api.boundary.QueryParams;
@@ -7,31 +6,17 @@ import demo.org.connectorz.files.Neo4JConnectionFactory;
 import demo.org.connectorz.files.Neo4jConnection;
 
 import javax.annotation.Resource;
-import javax.ejb.Stateless;
 import javax.resource.ResourceException;
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.net.URI;
+import java.util.List;
+import java.util.Map;
 
-*/
-/**
- *
- * @author adam bien, adam-bien.com
- *//*
-
-@Path("files")
-@Stateless
-@Consumes(MediaType.TEXT_PLAIN)
-@Produces(MediaType.TEXT_PLAIN)
 public class FilesResource2 {
 
     @Resource(name = "demo-jca/files")
     Neo4JConnectionFactory neo4JConnectionFactory;
 
-    @PUT
-    @Path("{id}")
-    public Response put(@PathParam("id") String id, String content) {
+    public List<Map<String, Object>> fetch() {
+        List<Map<String, Object>> r = null;
         try (Neo4jConnection bucket = neo4JConnectionFactory.getConnection();) {
             bucket.beginTransaction();
 
@@ -41,39 +26,17 @@ public class FilesResource2 {
             r = bucket.cypherParamsQuery(new Statement(query, params));
             bucket.commitTransaction();
 
-
             bucket.commitTransaction();
-
-
-
-
         } catch (ResourceException e) {
             e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        URI createdURI = URI.create(id);
-        return Response.created(createdURI).build();
+
+        return r;
     }
 
-    @GET
-    @Path("{id}")
-    public String fetch(@PathParam("id") String id) {
-        try (Bucket bucket = bucketStore.getBucket();) {
-            final byte[] content = bucket.fetch(id);
-            if(content == null)
-                return null;
-            return new String(content);
-        }
-    }
 
-    @DELETE
-    @Path("{id}")
-    public void delete(@PathParam("id") String id) {
-        try (Bucket bucket = bucketStore.getBucket();) {
-            bucket.delete(id);
-        }
-    }
 }
 
-*/
+
