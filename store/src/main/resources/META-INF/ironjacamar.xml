@@ -1,0 +1,15 @@
+<ironjacamar xmlns="http://www.ironjacamar.org/doc/schema"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://www.ironjacamar.org/doc/schema 
+             http://www.ironjacamar.org/doc/schema/ironjacamar_1_1.xsd">
+  <config-property name="rootDirectory">/tmp/graphdb</config-property>
+
+  <transaction-support>LocalTransaction</transaction-support>
+  
+  <connection-definitions>
+    <connection-definition class-name="demo.org.connectorz.store.Neo4jManagedConnectionFactory" jndi-name="java:/eis/Neo4jConnectionFactory" pool-name="Neo4jConnectionFactory">
+    </connection-definition>
+  </connection-definitions>
+
+
+</ironjacamar>

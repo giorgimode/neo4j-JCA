@@ -1,6 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat Middleware LLC, and individual contributors
+ * IronJacamar, a Java EE Connector Architecture implementation
+ * Copyright 2013, Red Hat Inc, and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -19,23 +19,24 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package demo.org.connectorz.files;
+package demo.org.connectorz.api;
+
+import java.io.Serializable;
 
 import javax.resource.Referenceable;
 import javax.resource.ResourceException;
-import java.io.Serializable;
 
 /**
- * Neo4JConnectionFactory
+ * Neo4jConnectionFactory
  *
  * @version $Revision: $
  */
-public interface Neo4JConnectionFactory extends Serializable, Referenceable
+public interface Neo4jConnectionFactory extends Serializable, Referenceable
 {
    /** 
     * Get connection from factory
     *
-    * @return Neo4JConnection instance
+    * @return Neo4jConnection instance
     * @exception ResourceException Thrown if a connection can't be obtained
     */
    public Neo4jConnection getConnection() throws ResourceException;

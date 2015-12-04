@@ -1,0 +1,7 @@
+<deployment>
+  <bean name="Neo4j" interface="demo.org.connectorz.files.mbean.Neo4jMBean" class="demo.org.connectorz.files.mbean.Neo4jMBeanImpl">
+    <property name="MBeanServer">
+        <inject bean="Kernel" property="MBeanServer"/>
+    </property>
+  </bean>
+</deployment>

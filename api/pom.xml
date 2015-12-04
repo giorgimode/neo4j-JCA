@@ -3,11 +3,11 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <artifactId>files</artifactId>
-    <groupId>demo.org.connectorz.files</groupId>
+    <artifactId>main</artifactId>
+    <groupId>demo.org.connectorz</groupId>
     <version>1.0-SNAPSHOT</version>
   </parent>
-  <groupId>demo.org.connectorz.files</groupId>
+  <groupId>demo.org.connectorz</groupId>
   <artifactId>api</artifactId>
   <version>1.0-SNAPSHOT</version>
   <name>demo JCA File API</name>
@@ -18,6 +18,11 @@
            <groupId>com.poolingpeople</groupId>
            <artifactId>neo4jApi</artifactId>
            <version>1.0.8</version>
+       </dependency>
+       <dependency>
+           <groupId>javax.resource</groupId>
+           <artifactId>connector-api</artifactId>
+           <version>1.5</version>
        </dependency>
 
    </dependencies>
